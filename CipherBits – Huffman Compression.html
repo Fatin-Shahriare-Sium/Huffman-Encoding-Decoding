@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>CipherBits – Huffman Compression</title>
+    <style>
+      :root {
+        --bg: #eef1f5;
+        --panel: #fff;
+        --ink: #14213d;
+        --mute: #5b6678;
+        --line: #d3d9e2;
+        --b0: #1f6fd1;
+        --b1: #c76a00;
+        --leaf: #e3f1ec;
+        --leafs: #1f7a5c;
+        --node: #e6eaf3;
+        --hi: #ffe27a;
+        --btn: #14213d;
+        --btnt: #fff;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0e1420;
+          --panel: #172033;
+          --ink: #e8edf6;
+          --mute: #9aa6bb;
+          --line: #2b3750;
+          --b0: #6fb0ff;
+          --b1: #ffb454;
+          --leaf: #173a31;
+          --leafs: #4fd1a1;
+          --node: #243252;
+          --hi: #7a6200;
+          --btn: #e8edf6;
+          --btnt: #0e1420;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0e1420;
+        --panel: #172033;
+        --ink: #e8edf6;
+        --mute: #9aa6bb;
+        --line: #2b3750;
+        --b0: #6fb0ff;
+        --b1: #ffb454;
+        --leaf: #173a31;
+        --leafs: #4fd1a1;
+        --node: #243252;
+        --hi: #7a6200;
+        --btn: #e8edf6;
+        --btnt: #0e1420;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          "Noto Sans Bengali",
+          sans-serif;
+      }
+      main {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px 16px 48px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.9rem;
+        letter-spacing: -0.02em;
+      }
+      .tag {
+        color: var(--mute);
+        margin: 2px 0 20px;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        margin: 0 0 4px;
+        font-size: 1.15rem;
+      }
+      .sub {
+        color: var(--mute);
+        margin: 0 0 12px;
+        font-size: 0.92rem;
+      }
+      textarea {
+        width: 100%;
+        min-height: 96px;
+        resize: vertical;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--ink);
+        font: inherit;
+      }
+      textarea.bits {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.9rem;
+        word-break: break-all;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        padding: 7px 14px;
+        border-radius: 8px;
+      }
+      button.p {
+        background: var(--btn);
+        color: var(--btnt);
+        border-color: var(--btn);
+      }
+      button:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid var(--b0);
+        outline-offset: 2px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+        align-items: center;
+      }
+      .msg {
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        display: none;
+        font-size: 0.93rem;
+      }
+      .msg.err {
+        display: block;
+        background: #fde8e8;
+        color: #8a1c1c;
+      }
+      .msg.ok {
+        display: block;
+        background: #e3f1ec;
+        color: #175c44;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+      }
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+      .stat b {
+        display: block;
+        font-size: 1.15rem;
+      }
+      .stat span {
+        color: var(--mute);
+        font-size: 0.82rem;
+      }
+      .note {
+        color: var(--mute);
+        font-size: 0.85rem;
+        margin-top: 8px;
+      }
+      .tw {
+        overflow: auto;
+        max-height: 340px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.92rem;
+      }
+      th,
+      td {
+        padding: 5px 10px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+      }
+      td.m {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+      }
+      #tree {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 160px;
+        max-height: 520px;
+        background: var(--bg);
+      }
+      #tree .empty {
+        padding: 48px 16px;
+        text-align: center;
+        color: var(--mute);
+      }
+      svg text {
+        fill: var(--ink);
+        font:
+          12px system-ui,
+          sans-serif;
+        pointer-events: none;
+      }
+      svg .e {
+        stroke: var(--mute);
+        stroke-width: 1.5;
+        fill: none;
+      }
+      svg .e.hl {
+        stroke-width: 4;
+      }
+      svg .n rect,
+      svg .n circle {
+        stroke: var(--mute);
+        stroke-width: 1.5;
+      }
+      svg .int rect,
+      svg .int circle {
+        fill: var(--node);
+      }
+      svg .lf rect {
+        fill: var(--leaf);
+        stroke: var(--leafs);
+      }
+      svg .lf {
+        cursor: pointer;
+      }
+      svg .n:hover rect,
+      svg .n:hover circle,
+      svg .n.hl rect,
+      svg .n.hl circle {
+        fill: var(--hi);
+        stroke-width: 3;
+      }
+      .info {
+        margin-top: 8px;
+        min-height: 1.5em;
+        font-size: 0.93rem;
+      }
+      .bitbox {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        word-break: break-all;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 160px;
+        overflow: auto;
+        min-height: 44px;
+      }
+      .dec {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        min-height: 44px;
+      }
+      .g {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 760px) {
+        .g {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Huffman Encoder-Decoder</h1>
+      <p class="tag">Huffman coding, step by step: shorter codes for frequent characters.</p>
+
+      <section>
+        <h2>Encode message</h2>
+        <p class="sub">No password or key is used. Anything you type, in any language, is compressed from its own character frequencies.</p>
+        <textarea id="inp" aria-label="Original message" placeholder="Type or paste text, e.g. hello world, বাংলা ভাষা, or Hello 😊😊"></textarea>
+        <div class="row">
+          <button class="p" id="gen">Generate Huffman Tree</button>
+          <button class="p" id="enc">Encode Message</button>
+          <button id="clr">Clear</button>
+        </div>
+        <div id="m1" class="msg" role="status"></div>
+      </section>
+
+      <section>
+        <h2>Huffman Tree Explorer</h2>
+        <p class="sub">Explore how character frequencies determine the structure of your compression tree.</p>
+        <div class="row" style="margin: 0 0 8px"><button id="zi" aria-label="Zoom in">Zoom in</button><button id="zo" aria-label="Zoom out">Zoom out</button><button id="zr">Reset</button></div>
+        <div id="tree"><div class="empty">Enter a message and choose Generate Huffman Tree to see it here.</div></div>
+        <div class="info" id="info" aria-live="polite">Click a leaf to see its code and highlight its path to the root. Left edges are 0, right edges are 1.</div>
+      </section>
+
+      <section>
+        <h2>Frequencies and statistics</h2>
+        <div class="stats" id="stats"></div>
+        <p class="note" id="statnote">Statistics appear after you encode a message.</p>
+        <div class="tw" style="margin-top: 12px">
+          <table>
+            <thead>
+              <tr>
+                <th>Character</th>
+                <th>Count</th>
+                <th>Share</th>
+                <th>Code</th>
+                <th>Bits</th>
+              </tr>
+            </thead>
+            <tbody id="tb">
+              <tr>
+                <td colspan="5" style="color: var(--mute)">No data yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2>Encoded output</h2>
+        <p class="sub">The bitstream and the Huffman encoding package (frequencies plus bits) needed to decode it anywhere.</p>
+        <div class="bitbox" id="bits" aria-label="Encoded bitstream">—</div>
+        <div class="row"><button id="cb">Copy bitstream</button><button id="cp">Copy encoding package</button></div>
+      </section>
+
+      <section>
+        <h2>Decode message</h2>
+        <p class="sub">Paste a bitstream (decoded with the tree from this session) or a Huffman encoding package (decoded with its own frequencies).</p>
+        <textarea id="din" class="bits" aria-label="Bitstream or package" placeholder='0110101… or {"format":"huffman-package",…}'></textarea>
+        <div class="row"><button class="p" id="dec">Decode Message</button><button id="usel">Use latest encoded bits</button><button id="cd">Copy decoded text</button></div>
+        <div id="m2" class="msg" role="status"></div>
+        <div class="dec" id="out" style="margin-top: 10px" aria-label="Decoded text"></div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const lab = (c) => ({ " ": "[Space]", "\n": "[Newline]", "\t": "[Tab]", "\r": "[CR]" })[c] || c;
+      let S = null; // session: {tree,codes,freq,text,bits,leaves}
+      let scale = 1,
+        sel = null;
+
+      /* ---------- Huffman core ---------- */
+      function buildTree(freq) {
+        // freq: Map(char->count), insertion order = first appearance
+        let id = 0,
+          q = [...freq].map(([ch, n]) => ({ ch, n, id: id++ }));
+        if (!q.length) return null;
+        while (q.length > 1) {
+          q.sort((a, b) => a.n - b.n || a.id - b.id); // deterministic tie-break
+          const l = q.shift(),
+            r = q.shift();
+          const p = { n: l.n + r.n, left: l, right: r, id: id++ };
+          l.parent = r.parent = p;
+          q.push(p);
+        }
+        return q[0];
+      }
+      function assignCodes(root) {
+        const codes = new Map(),
+          leaves = [];
+        (function walk(n, c) {
+          n.code = c;
+          if (n.ch !== undefined) {
+            if (!c) {
+              n.code = "0";
+            }
+            codes.set(n.ch, n.code);
+            leaves.push(n);
+            return;
+          }
+          walk(n.left, c + "0");
+          walk(n.right, c + "1");
+        })(root, "");
+        return { codes, leaves };
+      }
+      function analyze(text) {
+        const chars = Array.from(text),
+          freq = new Map();
+        chars.forEach((c) => freq.set(c, (freq.get(c) || 0) + 1));
+        const tree = buildTree(freq),
+          { codes, leaves } = assignCodes(tree);
+        return { tree, codes, leaves, freq, text, chars, bits: null };
+      }
+      function encodeText(s) {
+        return s.chars.map((c) => s.codes.get(c)).join("");
+      }
+      function decodeBits(bits, tree) {
+        if (tree.ch !== undefined) {
+          // single-leaf tree: every bit is '0'
+          if (/[^0]/.test(bits)) throw Error("This tree has one character, so its bitstream may only contain 0.");
+          return tree.ch.repeat(bits.length);
+        }
+        let out = [],
+          n = tree;
+        for (const b of bits) {
+          n = b === "0" ? n.left : n.right;
+          if (n.ch !== undefined) {
+            out.push(n.ch);
+            n = tree;
+          }
+        }
+        if (n !== tree) throw Error("The bitstream ends in the middle of a code. It is truncated or does not match this tree.");
+        return out.join("");
+      }
+
+      /* ---------- UI helpers ---------- */
+      function msg(id, t, k) {
+        const e = $(id);
+        e.className = "msg " + (k || "");
+        e.textContent = t;
+        if (!t) e.style.display = "none";
+        else e.style.display = "block";
+      }
+      function pkg(s) {
+        return JSON.stringify({ format: "huffman-package", version: 1, freqs: [...s.freq], bitLength: s.bits.length, bits: s.bits });
+      }
+      function parsePkg(t) {
+        let o;
+        try {
+          o = JSON.parse(t);
+        } catch {
+          throw Error("That looks like JSON but could not be parsed.");
+        }
+        if (o.format !== "huffman-package" || o.version !== 1) throw Error('Unsupported package: expected format "huffman-package", version 1.');
+        if (!Array.isArray(o.freqs) || !o.freqs.length || !o.freqs.every((p) => Array.isArray(p) && typeof p[0] === "string" && Array.from(p[0]).length === 1 && Number.isInteger(p[1]) && p[1] > 0)) throw Error("Package frequencies are missing or invalid.");
+        if (typeof o.bits !== "string" || /[^01]/.test(o.bits)) throw Error("Package bits must contain only 0 and 1.");
+        if (o.bitLength !== o.bits.length) throw Error("Package bitLength does not match the bits provided.");
+        return { freq: new Map(o.freqs), bits: o.bits };
+      }
+
+      /* ---------- Tree rendering ---------- */
+      function layout(root) {
+        let x = 0;
+        const nodes = [];
+        (function pos(n, d) {
+          n.d = d;
+          if (n.ch !== undefined) {
+            n.x = x++;
+          } else {
+            pos(n.left, d + 1);
+            pos(n.right, d + 1);
+            n.x = (n.left.x + n.right.x) / 2;
+          }
+          nodes.push(n);
+        })(root, 0);
+        return nodes;
+      }
+      function drawTree() {
+        const box = $("tree");
+        if (!S) {
+          box.innerHTML = '<div class="empty">Enter a message and choose Generate Huffman Tree to see it here.</div>';
+          return;
+        }
+        const nodes = layout(S.tree),
+          W = 58,
+          H = 84,
+          P = 40;
+        const maxD = Math.max(...nodes.map((n) => n.d)),
+          maxX = Math.max(...nodes.map((n) => n.x));
+        const w = maxX * W + P * 2 + 30,
+          h = maxD * H + P * 2 + 20;
+        const X = (n) => P + 15 + n.x * W,
+          Y = (n) => P + n.d * H;
+        let e = "",
+          v = "";
+        nodes.forEach((n) => {
+          if (n.ch !== undefined) return;
+          [
+            [n.left, "0"],
+            [n.right, "1"],
+          ].forEach(([c, b]) => {
+            e += `<line class="e" data-e="${c.id}" x1="${X(n)}" y1="${Y(n)}" x2="${X(c)}" y2="${Y(c)}"/>`;
+            const mx = (X(n) + X(c)) / 2,
+              my = (Y(n) + Y(c)) / 2;
+            e += `<text x="${mx + (b === "0" ? -9 : 9)}" y="${my}" text-anchor="middle" style="fill:${b === "0" ? "var(--b0)" : "var(--b1)"};font-weight:700;font-size:13px">${b}</text>`;
+          });
+        });
+        nodes.forEach((n) => {
+          const leaf = n.ch !== undefined,
+            x = X(n),
+            y = Y(n);
+          const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+          v += leaf ? `<g class="n lf" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(lab(n.ch))}, frequency ${n.n}, code ${n.code}"><rect x="${x - 24}" y="${y - 22}" width="48" height="44" rx="6"/><text x="${x}" y="${y - 3}" text-anchor="middle" style="font-size:${lab(n.ch).length > 2 ? 9 : 15}px;font-weight:700">${esc(lab(n.ch))}</text><text x="${x}" y="${y + 14}" text-anchor="middle">${n.n}</text></g>` : `<g class="n int" data-id="${n.id}"><circle cx="${x}" cy="${y}" r="19"/><text x="${x}" y="${y + 4}" text-anchor="middle">${n.n}</text></g>`;
+        });
+        box.innerHTML = `<svg id="svg" width="${w * scale}" height="${h * scale}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Huffman tree">${e}${v}</svg>`;
+        S.byId = new Map(nodes.map((n) => [n.id, n]));
+        box.querySelectorAll(".lf").forEach((g) => {
+          const go = () => pick(S.byId.get(+g.dataset.id));
+          g.onclick = go;
+          g.onkeydown = (ev) => {
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              go();
+            }
+          };
+        });
+        if (sel && S.byId.has(sel)) pick(S.byId.get(sel), true);
+      }
+      function pick(leaf, quiet) {
+        sel = leaf.id;
+        document.querySelectorAll("#svg .hl").forEach((e) => e.classList.remove("hl"));
+        for (let n = leaf; n; n = n.parent) {
+          document.querySelector(`#svg .n[data-id="${n.id}"]`)?.classList.add("hl");
+          document.querySelector(`#svg [data-e="${n.id}"]`)?.classList.add("hl");
+        }
+        $("info").innerHTML = `<b>${lab(leaf.ch).replace(/</g, "&lt;")}</b> · frequency ${leaf.n} · code <code>${leaf.code}</code> · ${leaf.code.length} bit${leaf.code.length > 1 ? "s" : ""}`;
+      }
+
+      /* ---------- Tables and stats ---------- */
+      function table() {
+        const total = S.chars.length;
+        const rows = [...S.leaves].sort((a, b) => b.n - a.n || [...S.freq.keys()].indexOf(a.ch) - [...S.freq.keys()].indexOf(b.ch));
+        $("tb").innerHTML = rows.map((l) => `<tr><td>${lab(l.ch).replace(/</g, "&lt;")}</td><td>${l.n}</td><td>${((l.n / total) * 100).toFixed(1)}%</td><td class="m">${l.code}</td><td>${l.code.length}</td></tr>`).join("");
+      }
+      function stats() {
+        const total = S.chars.length,
+          u8 = new TextEncoder().encode(S.text).length,
+          bits = S.bits.length,
+          by = Math.ceil(bits / 8);
+        const pk = new Blob([pkg(S)]).size,
+          red = (1 - by / u8) * 100;
+        const c = [
+          [total, "Characters"],
+          [S.freq.size, "Unique characters"],
+          [u8 + " B", "Original (UTF-8)"],
+          [bits, "Huffman bits"],
+          [(bits / total).toFixed(2), "Avg bits / character"],
+          [by + " B", "Bitstream, packed"],
+          [(by / u8).toFixed(2) + "×", "Packed ÷ original"],
+          [red >= 0 ? red.toFixed(1) + "%" : "+" + (-red).toFixed(1) + "%", red >= 0 ? "Reduction" : "Larger than original"],
+          [pk + " B", "Full package (JSON)"],
+        ];
+        $("stats").innerHTML = c.map(([a, b]) => `<div class="stat"><b>${a}</b><span>${b}</span></div>`).join("");
+        $("statnote").textContent = `Packed size is the bits rounded up to whole bytes. The package is larger because it also stores frequencies as readable JSON.${pk > u8 ? " Here even the bitstream alone may not beat the original on short input; these numbers are real, not adjusted." : ""}`;
+      }
+
+      /* ---------- Actions ---------- */
+      function run(withBits) {
+        const t = $("inp").value;
+        if (!t) {
+          S = null;
+          sel = null;
+          drawTree();
+          msg("m1", "Type or paste a message first. Huffman coding needs at least one character.", "err");
+          return false;
+        }
+        S = analyze(t);
+        sel = null;
+        scale = 1;
+        drawTree();
+        table();
+        if (withBits) {
+          S.bits = encodeText(S);
+          $("bits").textContent = S.bits;
+          stats();
+        } else {
+          $("bits").textContent = "—";
+          $("stats").innerHTML = "";
+          $("statnote").textContent = "Choose Encode Message to see statistics.";
+        }
+        msg("m1", withBits ? `Encoded ${S.chars.length} characters into ${S.bits.length} bits.` : `Tree built from ${S.freq.size} unique character${S.freq.size > 1 ? "s" : ""}.${S.freq.size === 1 ? " With one character the code is 0 by convention." : ""}`, "ok");
+        return true;
+      }
+      $("gen").onclick = () => run(false);
+      $("enc").onclick = () => run(true);
+      $("clr").onclick = () => {
+        $("inp").value = "";
+        S = null;
+        sel = null;
+        drawTree();
+        $("tb").innerHTML = '<tr><td colspan="5" style="color:var(--mute)">No data yet.</td></tr>';
+        $("stats").innerHTML = "";
+        $("statnote").textContent = "Statistics appear after you encode a message.";
+        $("bits").textContent = "—";
+        msg("m1", "");
+      };
+      const copy = (t, id) => {
+        if (!t) {
+          msg(id, "Nothing to copy yet.", "err");
+          return;
+        }
+        navigator.clipboard?.writeText(t).then(
+          () => msg(id, "Copied.", "ok"),
+          () => msg(id, "Copy failed. Select the text and copy it manually.", "err"),
+        );
+      };
+      $("cb").onclick = () => copy(S && S.bits, "m1");
+      $("cp").onclick = () => copy(S && S.bits && pkg(S), "m1");
+      $("usel").onclick = () => {
+        if (S && S.bits) $("din").value = S.bits;
+        else msg("m2", "Encode a message first.", "err");
+      };
+      $("cd").onclick = () => copy($("out").textContent, "m2");
+      $("dec").onclick = () => {
+        const raw = $("din").value.trim();
+        $("out").textContent = "";
+        if (!raw) {
+          msg("m2", "Paste a bitstream or package to decode.", "err");
+          return;
+        }
+        try {
+          let tree, bits;
+          if (raw[0] === "{") {
+            const p = parsePkg(raw);
+            tree = assignAndRoot(p.freq);
+            bits = p.bits;
+          } else {
+            bits = raw.replace(/\s+/g, "");
+            if (/[^01]/.test(bits)) throw Error("A bitstream may contain only 0 and 1 (whitespace is ignored).");
+            if (!S) throw Error("No tree in this session. Encode a message first, or paste a full Huffman encoding package.");
+            tree = S.tree;
+          }
+          if (!bits.length) throw Error("The bitstream is empty.");
+          $("out").textContent = decodeBits(bits, tree);
+          msg("m2", `Decoded ${bits.length} bits.`, "ok");
+        } catch (e) {
+          msg("m2", e.message, "err");
+        }
+      };
+      function assignAndRoot(freq) {
+        const t = buildTree(freq);
+        assignCodes(t);
+        return t;
+      }
+      $("zi").onclick = () => {
+        scale = Math.min(3, scale + 0.25);
+        drawTree();
+      };
+      $("zo").onclick = () => {
+        scale = Math.max(0.4, scale - 0.25);
+        drawTree();
+      };
+      $("zr").onclick = () => {
+        scale = 1;
+        drawTree();
+      };
+    </script>
+  </body>
+</html>
